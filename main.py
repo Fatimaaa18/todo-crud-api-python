@@ -3,6 +3,11 @@ app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return{"message" : "Hello! This is crud api"}
+    return{ "name": "Task API", "version": "1.0", "endpoints": ["/tasks"] }
+
+@app.get("/health")
+def read_route():
+    return{"status" : "ok"}
+
 
 
