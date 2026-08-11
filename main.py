@@ -3,6 +3,9 @@ from pydantic import BaseModel
 app = FastAPI()
 class TaskCreate(BaseModel):
     title: str
+class TaskUpdate(BaseModel):
+    title: str
+    done: bool
 
 @app.get("/")
 def read_root():
@@ -34,3 +37,22 @@ def cr_task(task: TaskCreate):
     tasks.append(new_task)
     return new_task
 
+@app.put("/tasks/{task_id}")
+def upd_task(task_id: int , updated: TaskUpdate):
+    if not updated.title or updated.title.strip() == "":
+       raise HTTPException(status_code=400, detail="Title is required")
+    for task in tasks:
+        if task["id"] == task_id:
+           task["title"] = updated.title
+           task["done"] = updated.done
+           return task
+
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
+
+@app.delete("/tasks/{task_id}")
+def task_del(task_id: int):
+    for task in tasks:
+        if task["id"] == task_id:
+            tasks.remove(task)
+            return
+    raise HTTPException(status_code=404, detail=f"Task {task_id} not found")
