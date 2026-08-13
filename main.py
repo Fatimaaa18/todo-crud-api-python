@@ -76,14 +76,19 @@ def get_task(task_id: int):
     
     return dict(row)
 
-@app.post("/tasks" , status_code = 201)
-def cr_task(task: TaskCreate):
+@app.post("/tasks", status_code=201)
+def create_task(task: TaskCreate):
     if not task.title or task.title.strip() == "":
         raise HTTPException(status_code=400, detail="Title is required")
-    new_id = max(t["id"] for t in tasks) + 1 if tasks else 1
-    new_task = {"id" : new_id , "title" : task.title , "done" : False}
-    tasks.append(new_task)
-    return new_task
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", (task.title, False))
+    conn.commit()
+    new_id = cursor.lastrowid
+    conn.close()
+
+    return {"id": new_id, "title": task.title, "done": False}
 
 @app.put("/tasks/{task_id}")
 def upd_task(task_id: int , updated: TaskUpdate):
