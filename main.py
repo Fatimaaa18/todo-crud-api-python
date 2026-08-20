@@ -57,6 +57,37 @@ class TaskUpdate(BaseModel):
     title: str
     done: bool
 
+class AuthRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/auth/signup" , status_code = 201)
+def signup(auth: AuthRequest):
+    if not auth.email or not auth.password:
+        raise HTTPException(status_code=400 , detail="Email and password both are required!")
+
+    try:
+        result = supabase.auth.sign_up({"email": auth.email, "password": auth.password})
+        return result.user
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/auth/login")
+def login(auth: AuthRequest):
+    if not auth.email or not auth.password:
+        raise HTTPException(status_code=400, detail="Email and password are required")
+
+     
+    try:
+        result = supabase.auth.sign_in_with_password({"email": auth.email, "password": auth.password})
+        return {
+            "access_token": result.session.access_token,
+            "refresh_token": result.session.refresh_token
+        }
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid login credentials")
+
+
 @app.get("/")
 def read_root():
     return {"name": "Task API", "version": "1.0", "endpoints": ["/tasks"]}
