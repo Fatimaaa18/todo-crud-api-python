@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel
 import os
 import psycopg2
@@ -92,8 +92,7 @@ def public_info():
     return {"message": "Welcome stranger! This info is public."}
 
 
-@app.get("/protected/profile")
-def protected_profile(authorization: str = Header(None)):
+def verify_token(authorization: str = Header(None)):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Access token required")
 
@@ -101,14 +100,33 @@ def protected_profile(authorization: str = Header(None)):
 
     try:
         user_response = supabase.auth.get_user(token)
-        user = user_response.user
-        return {
-            "id": user.id,
-            "email": user.email,
-            "created_at": user.created_at
-        }
-    except Exception as e:
+        return user_response.user
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+@app.get("/protected/profile")
+def protected_profile(user=Depends(verify_token)):
+    return {
+        "id": user.id,
+        "email": user.email,
+        "created_at": user.created_at
+    }
+
+
+@app.get("/protected/dashboard")
+def protected_dashboard(user=Depends(verify_token)):
+    return {"message": f"Welcome to your dashboard, {user.email}"}
+
+
+@app.post("/auth/logout", status_code=204)
+def logout(authorization: str = Header(None), user=Depends(verify_token)):
+    token = authorization.split(" ")[1]
+    try:
+        supabase.auth.sign_out(token)
+    except Exception:
+        pass
+    return
 
 @app.get("/")
 def read_root():
