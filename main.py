@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from pydantic import BaseModel
 import os
 import psycopg2
@@ -87,6 +87,18 @@ def login(auth: AuthRequest):
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid login credentials")
 
+@app.get("/public/info")
+def public_info():
+    return {"message": "Welcome stranger! This info is public."}
+
+
+@app.get("/protected/profile")
+def protected_profile(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Access token required")
+    
+    token = authorization.split(" ")[1]
+    return {"message": "Token received", "token_preview": token[:20]}
 
 @app.get("/")
 def read_root():
