@@ -5,6 +5,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 from supabase import create_client, Client
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -49,6 +50,7 @@ create_table()
 seed_data()
 
 app = FastAPI()
+security = HTTPBearer()
 
 class TaskCreate(BaseModel):
     title: str
@@ -92,18 +94,13 @@ def public_info():
     return {"message": "Welcome stranger! This info is public."}
 
 
-def verify_token(authorization: str = Header(None)):
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Access token required")
-
-    token = authorization.split(" ")[1]
-
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
     try:
         user_response = supabase.auth.get_user(token)
         return user_response.user
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-
 
 @app.get("/protected/profile")
 def protected_profile(user=Depends(verify_token)):
@@ -120,8 +117,8 @@ def protected_dashboard(user=Depends(verify_token)):
 
 
 @app.post("/auth/logout", status_code=204)
-def logout(authorization: str = Header(None), user=Depends(verify_token)):
-    token = authorization.split(" ")[1]
+def logout(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
     try:
         supabase.auth.sign_out(token)
     except Exception:
